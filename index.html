@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>0xDay: A Hacker's Playground</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2" defer></script>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background: url('https://0xhacking.com/images/bg-5.jpeg') no-repeat center center fixed;
+            background-size: cover;
+        }
+    </style>
+</head>
+<body class="text-white">
+
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-center">0xGigs: <span class="bg-green-600 px-2">A Hacker's Joblisting</span></h1>
+        <h2 class="text-3xl mt-4 text-center">Online to OnChain</h2>
+        <h3 class="text-2xl mt-2 text-center text-green-500">List_ > Connect_ > Build_ > Review_</h3>
+        <p class="text-xl mt-2 text-center text-green-500">List Now !</p>
+
+        <!-- Gig Posting Form -->
+        <div class="max-w-2xl mx-auto bg-black bg-opacity-50 p-6 mt-8 rounded-lg shadow-lg">
+            <h2 class="text-3xl font-bold text-center mb-6 text-green-500">Post a Gig</h2>
+
+            <form id="gigForm">
+                <div class="mb-6">
+                    <label for="gigTitle" class="block text-lg text-white">Gig Title</label>
+                    <input type="text" id="gigTitle" class="w-full px-4 py-2 mt-2 bg-gray-800 text-white border border-green-600 rounded-md" required placeholder="Enter the title of your gig">
+                </div>
+
+                <div class="mb-6">
+                    <label for="gigDescription" class="block text-lg text-white">Gig Description</label>
+                    <textarea id="gigDescription" class="w-full px-4 py-2 mt-2 bg-gray-800 text-white border border-green-600 rounded-md" rows="4" required placeholder="Describe your gig here..."></textarea>
+                </div>
+
+                <div class="mb-6">
+                    <label for="gigPrice" class="block text-lg text-white">Gig Price (in Wei)</label>
+                    <input type="number" id="gigPrice" class="w-full px-4 py-2 mt-2 bg-gray-800 text-white border border-green-600 rounded-md" required placeholder="Enter the price for your gig in Wei">
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none">Post Gig</button>
+            </form>
+        </div>
+
+        <!-- Gig Listings Section -->
+        <div class="mt-10">
+            <h2 class="text-3xl font-bold text-center text-green-500">Browse Available Gigs</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mt-6" id="gigList"></div>
+        </div>
+    </div>
+
+    <script>
+        // Handle the gig form submission
+        const contractABI = [
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "gigId",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "title",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint8",
+				"name": "rating",
+				"type": "uint8"
+			}
+		],
+		"name": "FeedbackSubmitted",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "gigId",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "title",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "price",
+				"type": "uint256"
+			}
+		],
+		"name": "GigPosted",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_title",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_description",
+				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_price",
+				"type": "uint256"
+			}
+		],
+		"name": "postGig",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_gigId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "_title",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_description",
+				"type": "string"
+			},
+			{
+				"internalType": "uint8",
+				"name": "_rating",
+				"type": "uint8"
+			}
+		],
+		"name": "submitFeedback",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "feedbackCount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "feedbacks",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "gigId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "title",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "description",
+				"type": "string"
+			},
+			{
+				"internalType": "uint8",
+				"name": "rating",
+				"type": "uint8"
+			},
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getAllGigs",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"internalType": "string",
+						"name": "title",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "description",
+						"type": "string"
+					},
+					{
+						"internalType": "uint256",
+						"name": "price",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					}
+				],
+				"internalType": "struct GigPlatform.Gig[]",
+				"name": "",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_gigId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_index",
+				"type": "uint256"
+			}
+		],
+		"name": "getFeedbackForGig",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "title",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "description",
+				"type": "string"
+			},
+			{
+				"internalType": "uint8",
+				"name": "rating",
+				"type": "uint8"
+			},
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_gigId",
+				"type": "uint256"
+			}
+		],
+		"name": "getGigFeedbackCount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "gigCount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "gigFeedbacks",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "gigs",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "title",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "description",
+				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "price",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+];
+
+    const contractAddress = "0x0DD485ffa0C64437A38Cf13c917B6f4C40630FEf";
+
+        document.getElementById('gigForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const title = document.getElementById('gigTitle').value;
+            const description = document.getElementById('gigDescription').value;
+            const price = document.getElementById('gigPrice').value;
+
+            if (window.ethereum) {
+                const web3 = new Web3(window.ethereum);
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+                const accounts = await web3.eth.getAccounts();
+                const contract = new web3.eth.Contract(contractABI, contractAddress);
+
+                await contract.methods.postGig(title, description, price).send({ from: accounts[0] });
+                alert("Gig posted successfully!");
+                loadGigs(); // Reload gigs
+            }
+        });
+
+        // Load and display gigs
+        async function loadGigs() {
+            if (window.ethereum) {
+                const web3 = new Web3(window.ethereum);
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+                const contract = new web3.eth.Contract(contractABI, contractAddress);
+                const gigs = await contract.methods.getAllGigs().call();
+
+                const gigList = document.getElementById('gigList');
+                gigList.innerHTML = ''; // Clear current list
+
+                gigs.forEach(gig => {
+                    const gigElement = document.createElement('div');
+                    gigElement.className = 'bg-black bg-opacity-70 p-6 rounded-lg shadow-lg flex flex-col border border-green-600';
+
+                    gigElement.innerHTML = `
+                        <h3 class="text-xl font-semibold text-green-500">${gig.title}</h3>
+                        <p class="mt-2 text-white">${gig.description}</p>
+                        <p class="mt-4 text-green-400 font-bold">Price: ${web3.utils.fromWei(gig.price, 'ether')} ETH</p>
+                        <button class="mt-6 py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none" onclick="viewGig(${gig.id})">View Gig</button>
+                    `;
+
+                    gigList.appendChild(gigElement);
+                });
+            }
+        }
+
+        // View Gig details and feedbacks (Handle in a separate modal or page)
+        function viewGig(gigId) {
+            alert('Viewing Gig #' + gigId);
+            // Redirect to gig details page or show feedback modal
+        }
+
+        loadGigs();
+    </script>
+
+</body>
+</html>
